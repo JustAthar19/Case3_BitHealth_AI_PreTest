@@ -1,0 +1,8 @@
+POST http://localhost:8000/recommend
+Content-Type: application/json
+
+{
+    "gender": "male",
+    "age": 17,
+    "symptoms": ["gusi berdarah", "gigi bolong"]
+}   
