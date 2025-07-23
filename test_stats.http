@@ -1,0 +1,20 @@
+POST http://localhost:8000/stats
+Content-Type: application/json
+
+[
+    {
+        "gender": "female",
+        "age": 22,
+        "symptoms": ["pusing", "mual", "sulit berjalan"]
+    },
+    {
+        "gender": "male",
+        "age": 45,
+        "symptoms": ["batuk", "sesak napas"]
+    },
+    {
+        "gender": "female",
+        "age": 30,
+        "symptoms": ["demam"]
+    }
+]

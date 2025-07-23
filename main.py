@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
@@ -7,6 +8,11 @@ from langchain_core.runnables import RunnableSequence
 from dotenv import load_dotenv
 from typing import List
 import os
+from collections import Counter
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Hospital Triage System",
@@ -28,6 +34,8 @@ class PatientInput(BaseModel):
 class RecommendationOutput(BaseModel):
     recommended_department: str
 
+class StatsOutput(BaseModel):
+    department_counts: dict
 
 # Rule Based Fallback -> Back Up mechanism incase the LLMs Failed
 SYMPTOM_TO_DEPT = {
@@ -102,3 +110,49 @@ async def recommned_department(patient: PatientInput):
     # Choose the most common department or set it to default (General Medicine)
     most_common = max(set(departments), key=departments.count, default="General Mdicine")
     return RecommendationOutput(recommended_department=most_common)
+
+
+# Case 3: End-to-End Mini Project
+# Task: Extend your FastAPI service from Case 3 by adding a /stats endpoint to summarize patient data, testing your ability to handle API logic and integrate with the existing system.
+
+# Input: Reuse main.py from Case 3 (/Users/atharfathana/Documents/Machine Learning-AI/BitHeatlth-AI-PreTest/Case3_BitHealth_AI_PreTest/main.py).
+# Requirement: Add a /stats POST endpoint that accepts a list of patient data (gender, age, symptoms) and returns the count of patients per recommended department.
+# Challenge: Use the existing SYMPTOM_TO_DEPARTMENT mapping (rule-based) for recommendations and handle invalid inputs.
+
+# @app.post("/stats", response_model=StatsOutput)
+# async def department_starts(patients: List[PatientInput]):
+#     logger.debug(f"Received /stats request with {len(patients)} patients: {patients}")
+#     if not patients:
+#         raise HTTPException(status_code=400, detail='Patient List Cannot Be Empty')
+#     departments = []
+#     for patient in patients:
+#         # Skip the patient with empty symptoms
+#         if not patient.symptoms:
+#             continue
+#         # Confusing
+#         patient_depts = [SYMPTOM_TO_DEPT.get(symptom.lower(), "General Medicine") for symptom in patient.symptoms] # Confusing
+#         most_common = Counter(patient_depts).most_common(1)[0][0] # Confusing
+#         departments.append(most_common)
+#     dept_counts = dict(Counter(department_starts))
+#     return StatsOutput(departement_counts=dept_counts)
+
+@app.post("/stats", response_model=StatsOutput)
+async def department_stats(patients: List[PatientInput]):
+    logger.debug(f"Received /stats request with {len(patients)} patients: {patients}")
+    if not patients:
+        logger.warning("Empty patient list received")
+        raise HTTPException(status_code=400, detail="Patient list cannot be empty")
+    
+    departments = []
+    for patient in patients:
+        if not patient.symptoms:
+            logger.debug(f"Skipping patient with no symptoms: {patient}")
+            continue
+        patient_depts = [SYMPTOM_TO_DEPT.get(symptom.lower(), "General Medicine") for symptom in patient.symptoms]
+        most_common = Counter(patient_depts).most_common(1)[0][0] if patient_depts else "General Medicine"
+        departments.append(most_common)
+        logger.debug(f"Patient {patient}: selected department {most_common}")
+    
+    dept_counts = dict(Counter(departments))
+    logger.info(f"Returning department counts: {dept_counts}")
+    return StatsOutput(department_counts=dept_counts if dept_counts else {})
